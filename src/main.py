@@ -1,42 +1,39 @@
-import generate
+import os
+import shutil
+
+from generate import generate_pages_recursive
+
+
+def copy_files(src_dir, dst_dir):
+    for item in os.listdir(src_dir):
+        if os.path.isfile(os.path.join(src_dir, item)):
+            src_file = os.path.join(src_dir, item)
+            dst_file = os.path.join(dst_dir, item)
+            shutil.copy(src_file, dst_file)
+        else:
+            new_src_dir = os.path.join(src_dir, item)
+            new_dst_dir = os.path.join(dst_dir, item)
+            os.mkdir(new_dst_dir)
+            copy_files(new_src_dir, new_dst_dir)
 
 
 def main():
-    markdown = """
-This is **bolded** paragraph
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+    CONTENT_DIR = os.path.join(BASE_DIR, "content")
+    PUBLIC_DIR = os.path.join(BASE_DIR, "public")
+    STATIC_DIR = os.path.join(BASE_DIR, "static")
+    TEMPLATE_FILE = os.path.join(BASE_DIR, "template.html")
 
-This is another paragraph with *italic* text and `code` here
-This is the same paragraph on a new line
+    try:
+        shutil.rmtree(PUBLIC_DIR)
+    except FileNotFoundError:
+        pass
+    finally:
+        os.mkdir(PUBLIC_DIR)
 
-* This is a list
-* with items
+    copy_files(STATIC_DIR, PUBLIC_DIR)
 
-# This is Heading 1
-
-* mess up
-- ordered list
-
-## This is a Heading 2
-
-```
-This is a code block
-with multiple lines
-```
-
-### This is Heading 3
-
-1. Ordered **bold**
-2. List
-
-> This is
-> a quote
-
-> this is a messed
-up quote
-    """
-
-    html_nodes = generate.markdown_to_html_node(markdown)
-    print("\n\n", html_nodes.to_html())
+    generate_pages_recursive(CONTENT_DIR, TEMPLATE_FILE, PUBLIC_DIR)
 
 
 main()

@@ -6,12 +6,12 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 def run(
     server_class=HTTPServer,
     handler_class=SimpleHTTPRequestHandler,
-    port=8000,
+    port=8888,
     directory=None,
 ):
     if directory:  # Change the current working directory if directory is specified
         os.chdir(directory)
-    server_address = ("", port)
+    server_address = ("0.0.0.0", port)
     httpd = server_class(server_address, handler_class)
     print(f"Serving HTTP on http://localhost:{port} from directory '{directory}'...")
     httpd.serve_forever()
