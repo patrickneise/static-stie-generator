@@ -13,7 +13,7 @@ from generate import (
     text_node_to_html_node,
     unordered_to_html,
 )
-from parse import TextNode, NodeType
+from parse import TextNode, TextType
 
 
 class TestHTMLNode(unittest.TestCase):
@@ -113,31 +113,31 @@ class TestParentNode(unittest.TestCase):
 class TestTextNodeToHTMLNode(unittest.TestCase):
 
     def test_text_type(self):
-        text_node = TextNode("This is text", NodeType.TEXT)
+        text_node = TextNode("This is text", TextType.TEXT)
         html_node = text_node_to_html_node(text_node)
         expected_html_node = LeafNode(None, "This is text")
         self.assertEqual(html_node, expected_html_node)
 
     def test_bold_type(self):
-        text_node = TextNode("this is bold text", NodeType.BOLD)
+        text_node = TextNode("this is bold text", TextType.BOLD)
         html_node = text_node_to_html_node(text_node)
         expected_html_node = LeafNode("b", "this is bold text")
         self.assertEqual(html_node, expected_html_node)
 
     def test_italic_type(self):
-        text_node = TextNode("This is italic text", NodeType.ITALIC)
+        text_node = TextNode("This is italic text", TextType.ITALIC)
         html_node = text_node_to_html_node(text_node)
         expected_html_node = LeafNode("i", "This is italic text")
         self.assertEqual(html_node, expected_html_node)
 
     def test_code_type(self):
-        text_node = TextNode("This is code", NodeType.CODE)
+        text_node = TextNode("This is code", TextType.CODE)
         html_node = text_node_to_html_node(text_node)
         expected_html_node = LeafNode("code", "This is code")
         self.assertEqual(html_node, expected_html_node)
 
     def test_link_type(self):
-        text_node = TextNode("This is a link", NodeType.LINK, "https://www.boot.dev")
+        text_node = TextNode("This is a link", TextType.LINK, "https://www.boot.dev")
         html_node = text_node_to_html_node(text_node)
         expected_html_node = LeafNode(
             "a", "This is a link", {"href": "https://www.boot.dev"}
@@ -145,7 +145,7 @@ class TestTextNodeToHTMLNode(unittest.TestCase):
         self.assertEqual(html_node, expected_html_node)
 
     def test_image_type(self):
-        text_node = TextNode("Image alt text", NodeType.IMAGE, "img/test.jpg")
+        text_node = TextNode("Image alt text", TextType.IMAGE, "img/test.jpg")
         html_node = text_node_to_html_node(text_node)
         expected_html_node = LeafNode(
             "img", None, {"src": "img/test.jpg", "alt": "Image alt text"}

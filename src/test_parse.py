@@ -1,8 +1,7 @@
 import unittest
 
+from config import BlockType, TextType
 from parse import (
-    Block,
-    NodeType,
     TextNode,
     block_to_block_type,
     extract_markdown_images,
@@ -17,77 +16,77 @@ from parse import (
 
 class TestTextNode(unittest.TestCase):
     def test_eq(self):
-        node = TextNode("This is a text node", "bold")
-        node2 = TextNode("This is a text node", "bold")
+        node = TextNode("This is a text node", TextType.BOLD)
+        node2 = TextNode("This is a text node", TextType.BOLD)
         self.assertEqual(node, node2)
 
     def test_eq_url(self):
-        node = TextNode("This is a text node", "bold", "https://boot.dev")
-        node2 = TextNode("This is a text node", "bold", "https://boot.dev")
+        node = TextNode("This is a text node", TextType.BOLD, "https://boot.dev")
+        node2 = TextNode("This is a text node", TextType.BOLD, "https://boot.dev")
         self.assertEqual(node, node2)
 
     def test_not_equal_text(self):
-        node = TextNode("This is a text node", "bold")
-        node2 = TextNode("This is a different text node", "bold")
+        node = TextNode("This is a text node", TextType.BOLD)
+        node2 = TextNode("This is a different text node", TextType.BOLD)
         self.assertNotEqual(node, node2)
 
     def test_not_equal_type(self):
-        node = TextNode("This is a text node", "bold")
-        node2 = TextNode("This is a text node", "italic")
+        node = TextNode("This is a text node", TextType.BOLD)
+        node2 = TextNode("This is a text node", TextType.ITALIC)
         self.assertNotEqual(node, node2)
 
     def test_not_equal_url(self):
-        node = TextNode("This is a text node", "bold")
-        node2 = TextNode("This is a text node", "bold", "https://boot.dev")
+        node = TextNode("This is a text node", TextType.BOLD)
+        node2 = TextNode("This is a text node", TextType.BOLD, "https://boot.dev")
         self.assertNotEqual(node, node2)
 
     def test_repr_text(self):
-        node = TextNode("This is a text Node", "italic")
-        output = f'TextNode("This is a text Node", {node.text_type})'
+        node = TextNode("This is a text Node", TextType.ITALIC)
+        output = f'TextNode(text="This is a text Node", text_type="{node.text_type}")'
         self.assertEqual(repr(node), output)
 
     def test_repr_image(self):
-        node = TextNode("This is a Link", "link", "https://www.boot.dev")
-        output = f'TextNode("This is a Link", {node.text_type}, "https://www.boot.dev")'
+        node = TextNode("This is a Link", TextType.LINK, "https://www.boot.dev")
+        output = f'TextNode(text="This is a Link", text_type="{node.text_type}", url="https://www.boot.dev")'
         self.assertEqual(repr(node), output)
 
 
 class TestSplitNodesDelimeter(unittest.TestCase):
     def test_code_text(self):
-        node = TextNode("This is text with a `code block` word", NodeType.TEXT)
-        new_nodes = split_nodes_delimeter([node], "`", NodeType.CODE)
+        node = TextNode("This is text with a `code block` word", TextType.TEXT)
+        new_nodes = split_nodes_delimeter([node], "`", TextType.CODE)
         expected_nodes = [
-            TextNode("This is text with a ", NodeType.TEXT),
-            TextNode("code block", NodeType.CODE),
-            TextNode(" word", NodeType.TEXT),
+            TextNode("This is text with a ", TextType.TEXT),
+            TextNode("code block", TextType.CODE),
+            TextNode(" word", TextType.TEXT),
         ]
 
         self.assertEqual(new_nodes, expected_nodes)
 
     def test_bold_text(self):
-        node = TextNode("This is **bold text** in a sentence", NodeType.TEXT)
-        new_nodes = split_nodes_delimeter([node], "**", NodeType.BOLD)
+        node = TextNode("This is **bold text** in a sentence", TextType.TEXT)
+        new_nodes = split_nodes_delimeter([node], "**", TextType.BOLD)
         expected_nodes = [
-            TextNode("This is ", NodeType.TEXT),
-            TextNode("bold text", NodeType.BOLD),
-            TextNode(" in a sentence", NodeType.TEXT),
+            TextNode("This is ", TextType.TEXT),
+            TextNode("bold text", TextType.BOLD),
+            TextNode(" in a sentence", TextType.TEXT),
         ]
 
         self.assertEqual(new_nodes, expected_nodes)
 
     def test_italic_text(self):
-        node = TextNode("This is *italic text* in a sentence", NodeType.TEXT)
-        new_nodes = split_nodes_delimeter([node], "*", NodeType.ITALIC)
+        node = TextNode("This is *italic text* in a sentence", TextType.TEXT)
+        new_nodes = split_nodes_delimeter([node], "*", TextType.ITALIC)
         expected_nodes = [
-            TextNode("This is ", NodeType.TEXT),
-            TextNode("italic text", NodeType.ITALIC),
-            TextNode(" in a sentence", NodeType.TEXT),
+            TextNode("This is ", TextType.TEXT),
+            TextNode("italic text", TextType.ITALIC),
+            TextNode(" in a sentence", TextType.TEXT),
         ]
 
         self.assertEqual(new_nodes, expected_nodes)
 
     def test_missing_delimeter(self):
-        node = TextNode("This is `code block missing a backtic", NodeType.TEXT)
+        node = TextNode("This is `code block missing a backtic", TextType.TEXT)
 
         self.assertRaises(Exception, split_nodes_delimeter, node)
 
@@ -132,13 +131,13 @@ class TestSplitNodesImages(unittest.TestCase):
     def test_image_start_line(self):
         node = TextNode(
             "![alt text](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png)",
-            NodeType.TEXT,
+            TextType.TEXT,
         )
         new_nodes = split_nodes_image([node])
         expected_nodes = [
             TextNode(
                 "alt text",
-                NodeType.IMAGE,
+                TextType.IMAGE,
                 "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png",
             )
         ]
@@ -147,37 +146,37 @@ class TestSplitNodesImages(unittest.TestCase):
     def test_single_image(self):
         node = TextNode(
             "This is text with an ![image](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png) and nothing else",
-            NodeType.TEXT,
+            TextType.TEXT,
         )
         new_nodes = split_nodes_image([node])
         expected_nodes = [
-            TextNode("This is text with an ", NodeType.TEXT),
+            TextNode("This is text with an ", TextType.TEXT),
             TextNode(
                 "image",
-                NodeType.IMAGE,
+                TextType.IMAGE,
                 "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png",
             ),
-            TextNode(" and nothing else", NodeType.TEXT),
+            TextNode(" and nothing else", TextType.TEXT),
         ]
         self.assertEqual(new_nodes, expected_nodes)
 
     def test_multiple_image(self):
         node = TextNode(
             "This is text with an ![image](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png) and another ![second image](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/3elNhQu.png)",
-            NodeType.TEXT,
+            TextType.TEXT,
         )
         new_nodes = split_nodes_image([node])
         expected_nodes = [
-            TextNode("This is text with an ", NodeType.TEXT),
+            TextNode("This is text with an ", TextType.TEXT),
             TextNode(
                 "image",
-                NodeType.IMAGE,
+                TextType.IMAGE,
                 "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png",
             ),
-            TextNode(" and another ", NodeType.TEXT),
+            TextNode(" and another ", TextType.TEXT),
             TextNode(
                 "second image",
-                NodeType.IMAGE,
+                TextType.IMAGE,
                 "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/3elNhQu.png",
             ),
         ]
@@ -188,37 +187,37 @@ class TestSplitNodesLinks(unittest.TestCase):
     def test_single_link(self):
         node = TextNode(
             "This is text with a [link to boot.dev](https://www.boot.dev) and nothing else",
-            NodeType.TEXT,
+            TextType.TEXT,
         )
         new_nodes = split_nodes_link([node])
         expected_nodes = [
-            TextNode("This is text with a ", NodeType.TEXT),
+            TextNode("This is text with a ", TextType.TEXT),
             TextNode(
                 "link to boot.dev",
-                NodeType.LINK,
+                TextType.LINK,
                 "https://www.boot.dev",
             ),
-            TextNode(" and nothing else", NodeType.TEXT),
+            TextNode(" and nothing else", TextType.TEXT),
         ]
         self.assertEqual(new_nodes, expected_nodes)
 
     def test_multiple_links(self):
         node = TextNode(
             "This is text with a [link to boot.dev](https://www.boot.dev) and one to [my github](https://www.github.com/patrickneise)",
-            NodeType.TEXT,
+            TextType.TEXT,
         )
         new_nodes = split_nodes_link([node])
         expected_nodes = [
-            TextNode("This is text with a ", NodeType.TEXT),
+            TextNode("This is text with a ", TextType.TEXT),
             TextNode(
                 "link to boot.dev",
-                NodeType.LINK,
+                TextType.LINK,
                 "https://www.boot.dev",
             ),
-            TextNode(" and one to ", NodeType.TEXT),
+            TextNode(" and one to ", TextType.TEXT),
             TextNode(
                 "my github",
-                NodeType.LINK,
+                TextType.LINK,
                 "https://www.github.com/patrickneise",
             ),
         ]
@@ -229,27 +228,27 @@ class TestTextToTextNodes(unittest.TestCase):
     def test_text_node(self):
         text = "This is just text"
         nodes = text_to_textnodes(text)
-        expected_nodes = [TextNode("This is just text", NodeType.TEXT)]
+        expected_nodes = [TextNode("This is just text", TextType.TEXT)]
         self.assertEqual(nodes, expected_nodes)
 
     def test_all_nodes(self):
         text = "This is **text** with an *italic* word and a `code block` and an ![image](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png) and a [link](https://boot.dev)"
         nodes = text_to_textnodes(text)
         expected_nodes = [
-            TextNode("This is ", NodeType.TEXT),
-            TextNode("text", NodeType.BOLD),
-            TextNode(" with an ", NodeType.TEXT),
-            TextNode("italic", NodeType.ITALIC),
-            TextNode(" word and a ", NodeType.TEXT),
-            TextNode("code block", NodeType.CODE),
-            TextNode(" and an ", NodeType.TEXT),
+            TextNode("This is ", TextType.TEXT),
+            TextNode("text", TextType.BOLD),
+            TextNode(" with an ", TextType.TEXT),
+            TextNode("italic", TextType.ITALIC),
+            TextNode(" word and a ", TextType.TEXT),
+            TextNode("code block", TextType.CODE),
+            TextNode(" and an ", TextType.TEXT),
             TextNode(
                 "image",
-                NodeType.IMAGE,
+                TextType.IMAGE,
                 "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png",
             ),
-            TextNode(" and a ", NodeType.TEXT),
-            TextNode("link", NodeType.LINK, "https://boot.dev"),
+            TextNode(" and a ", TextType.TEXT),
+            TextNode("link", TextType.LINK, "https://boot.dev"),
         ]
         self.assertEqual(nodes, expected_nodes)
 
@@ -283,62 +282,62 @@ class TestBlockToBlockType(unittest.TestCase):
     def test_h1(self):
         block = "# This is a heading"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.HEADING)
+        self.assertEqual(block_type, BlockType.HEADING)
 
     def test_h4(self):
         block = "#### This is a heading"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.HEADING)
+        self.assertEqual(block_type, BlockType.HEADING)
 
     def test_code(self):
         block = "```\nthis is code\n```"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.CODE)
+        self.assertEqual(block_type, BlockType.CODE)
 
     def test_code_missing_backticks(self):
         block = "```\nthis is code\n"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.PARAGRAPH)
+        self.assertEqual(block_type, BlockType.PARAGRAPH)
 
     def test_quote(self):
         block = "> this is a quote\n> on multiple lines"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.QUOTE)
+        self.assertEqual(block_type, BlockType.QUOTE)
 
     def test_quote_missing_format(self):
         block = "> this is a quote\non multiple lines"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.PARAGRAPH)
+        self.assertEqual(block_type, BlockType.PARAGRAPH)
 
     def test_ul_astrick(self):
         block = "* this is an\n* unordered list"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.UNORDERED)
+        self.assertEqual(block_type, BlockType.UNORDERED)
 
     def test_ul_hyphen(self):
         block = "- this is an\n- unordered list"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.UNORDERED)
+        self.assertEqual(block_type, BlockType.UNORDERED)
 
     def test_ul_missing(self):
         block = "- this is an\nunordered list"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.PARAGRAPH)
+        self.assertEqual(block_type, BlockType.PARAGRAPH)
 
     def test_ol(self):
         block = "1. this is an\n2. ordered list"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.ORDERED)
+        self.assertEqual(block_type, BlockType.ORDERED)
 
     def test_ol_missing(self):
         block = "1. this is an\nordered list"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.PARAGRAPH)
+        self.assertEqual(block_type, BlockType.PARAGRAPH)
 
     def test_ol_start_at_2(self):
         block = "2. this is an\nordered list"
         block_type = block_to_block_type(block)
-        self.assertEqual(block_type, Block.PARAGRAPH)
+        self.assertEqual(block_type, BlockType.PARAGRAPH)
 
 
 if __name__ == "__main__":

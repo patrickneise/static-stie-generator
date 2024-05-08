@@ -1,28 +1,11 @@
-from enum import StrEnum
 import re
 from typing import List, Self, Tuple
 
-
-class NodeType(StrEnum):
-    TEXT = "text"
-    BOLD = "bold"
-    ITALIC = "italic"
-    CODE = "code"
-    LINK = "link"
-    IMAGE = "image"
-
-
-class Block(StrEnum):
-    PARAGRAPH = "paragraph"
-    HEADING = "heading"
-    CODE = "code"
-    QUOTE = "quote"
-    UNORDERED = "unordered_list"
-    ORDERED = "ordered_list"
+from config import BlockType, TextType
 
 
 class TextNode:
-    def __init__(self, text: str, text_type: NodeType, url: str = None):
+    def __init__(self, text: str, text_type: TextType, url: str = None):
         self.text = text
         self.text_type = text_type
         self.url = url
@@ -35,72 +18,75 @@ class TextNode:
         )
 
     def __repr__(self):
-        if self.text_type in [NodeType.IMAGE, NodeType.LINK]:
-            return f'TextNode("{self.text}", {self.text_type}, "{self.url}")'
+        if self.text_type in [TextType.IMAGE, TextType.LINK]:
+            return f'TextNode(text="{self.text}", text_type="{self.text_type}", url="{self.url}")'
         else:
-            return f'TextNode("{self.text}", {self.text_type})'
+            return f'TextNode(text="{self.text}", text_type="{self.text_type}")'
 
 
-# TODO: update based on regex to split
 def split_nodes_delimeter(
-    old_nodes: List[TextNode], delimeter: str, text_type: NodeType
+    old_nodes: List[TextNode], delimeter: str, text_type: TextType
 ) -> List[TextNode]:
     new_nodes = []
-    re_delimeter = "\\".join(list(delimeter))
-    for node in old_nodes:
-        chunks = re.split(f"(\{re_delimeter}.+\{re_delimeter})", node.text)
+    for old_node in old_nodes:
+        if old_node.text_type != TextType.TEXT:
+            new_nodes.append(old_node)
+            continue
+
+        split_nodes = []
+        chunks = old_node.text.split(delimeter)
         if len(chunks) % 2 == 0:
-            raise Exception("Invalid Markdown format")
-        if node.text_type == NodeType.TEXT:
-            for index, chunk in enumerate(chunks):
-                if chunk:
-                    (
-                        new_nodes.append(TextNode(chunk, NodeType.TEXT))
-                        if index % 2 == 0
-                        else new_nodes.append(
-                            TextNode(chunk.strip(delimeter), text_type)
-                        )
-                    )
-        else:
-            new_nodes.append(node)
+            raise ValueError("Invalid markdown, formatted section not closed")
+        for index, chunk in enumerate(chunks):
+            if chunk == "":
+                continue
+            if index % 2 == 0:
+                split_nodes.append(TextNode(chunk, TextType.TEXT))
+            else:
+                split_nodes.append(TextNode(chunk, text_type))
+        new_nodes.extend(split_nodes)
     return new_nodes
 
 
 def split_nodes_image(old_nodes: List[TextNode]) -> List[TextNode]:
     new_nodes = []
     for node in old_nodes:
+
         images = extract_markdown_images(node.text)
-        if images:
-            alt_text, url = images[0]
-            text_node, next_node = node.text.split(f"![{alt_text}]({url})", 1)
-            if text_node:
-                new_nodes.append(TextNode(text_node, NodeType.TEXT))
-            new_nodes.append(TextNode(alt_text, NodeType.IMAGE, url))
-            if next_node:
-                new_nodes.extend(
-                    split_nodes_image([TextNode(next_node, NodeType.TEXT)])
-                )
-        else:
+
+        if node.text_type != TextType.TEXT or not images:
             new_nodes.append(node)
+            continue
+
+        alt_text, url = images[0]
+        text_node, next_node = node.text.split(f"![{alt_text}]({url})", 1)
+        if text_node:
+            new_nodes.append(TextNode(text_node, TextType.TEXT))
+        new_nodes.append(TextNode(alt_text, TextType.IMAGE, url))
+        if next_node:
+            new_nodes.extend(split_nodes_image([TextNode(next_node, TextType.TEXT)]))
+
     return new_nodes
 
 
 def split_nodes_link(old_nodes: List[TextNode]):
     new_nodes = []
     for node in old_nodes:
+
         links = extract_markdown_links(node.text)
-        if node.text and not links:
+
+        if node.text_type != TextType.TEXT or not links:
             new_nodes.append(node)
-        if links:
-            text, url = links[0]
-            text_node, next_node = node.text.split(f"[{text}]({url})", 1)
-            new_nodes.extend(
-                [
-                    TextNode(text_node, NodeType.TEXT),
-                    TextNode(text, NodeType.LINK, url),
-                ]
-                + split_nodes_link([TextNode(next_node, NodeType.TEXT)])
-            )
+            continue
+
+        text, url = links[0]
+        text_node, next_node = node.text.split(f"[{text}]({url})", 1)
+        if text_node:
+            new_nodes.append(TextNode(text_node, TextType.TEXT))
+        new_nodes.append(TextNode(text, TextType.LINK, url))
+        if next_node:
+            new_nodes.extend(split_nodes_link([TextNode(next_node, TextType.TEXT)]))
+
     return new_nodes
 
 
@@ -115,12 +101,12 @@ def extract_markdown_links(text: str) -> List[Tuple[str, str]]:
 
 
 def text_to_textnodes(text: str) -> List[TextNode]:
-    nodes = [TextNode(text, NodeType.TEXT)]
+    nodes = [TextNode(text, TextType.TEXT)]
     nodes = split_nodes_image(nodes)
     nodes = split_nodes_link(nodes)
-    nodes = split_nodes_delimeter(nodes, "`", NodeType.CODE)
-    nodes = split_nodes_delimeter(nodes, "**", NodeType.BOLD)
-    nodes = split_nodes_delimeter(nodes, "*", NodeType.ITALIC)
+    nodes = split_nodes_delimeter(nodes, "`", TextType.CODE)
+    nodes = split_nodes_delimeter(nodes, "**", TextType.BOLD)
+    nodes = split_nodes_delimeter(nodes, "*", TextType.ITALIC)
 
     return nodes
 
@@ -131,32 +117,32 @@ def markdown_to_blocks(markdown: str) -> List[str]:
     return blocks
 
 
-def block_to_block_type(block: str) -> Block:
+def block_to_block_type(block: str) -> BlockType:
     block_start = block.split()[0]
     block_end = block.split()[-1]
 
     if block_start in "######":
-        return Block.HEADING
+        return BlockType.HEADING
     if block_start == "```" and block_end == "```":
-        return Block.CODE
+        return BlockType.CODE
     if block_start == ">":
         for line in block.split("\n"):
             if line.split()[0] != ">":
-                return Block.PARAGRAPH
-        return Block.QUOTE
+                return BlockType.PARAGRAPH
+        return BlockType.QUOTE
     if block_start in "*-":
         list_char = block_start
         for line in block.split("\n"):
             if line.split()[0] != list_char:
-                return Block.PARAGRAPH
-        return Block.UNORDERED
+                return BlockType.PARAGRAPH
+        return BlockType.UNORDERED
     if block_start == "1.":
         items = 1
         for line in block.split("\n"):
 
             if (not line[0].isdigit()) or (int(line.split(".")[0]) != items):
-                return Block.PARAGRAPH
+                return BlockType.PARAGRAPH
             items += 1
-        return Block.ORDERED
+        return BlockType.ORDERED
 
-    return Block.PARAGRAPH
+    return BlockType.PARAGRAPH

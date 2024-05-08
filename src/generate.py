@@ -2,7 +2,8 @@ import os
 import re
 from typing import Dict, List, Self
 
-import parse
+from config import BlockType, TextType
+from parse import block_to_block_type, markdown_to_blocks, text_to_textnodes, TextNode
 
 
 class HTMLNode:
@@ -71,98 +72,103 @@ class ParentNode(HTMLNode):
         return f"<{self.tag}{self.props_to_html()}>{inner_html}</{self.tag}>"
 
 
-def text_node_to_html_node(text_node: parse.TextNode):
-    if text_node.text_type == parse.NodeType.TEXT:
+def text_node_to_html_node(text_node: TextNode) -> LeafNode:
+    if text_node.text_type == TextType.TEXT:
         return LeafNode(None, text_node.text)
-    elif text_node.text_type == parse.NodeType.BOLD:
+    elif text_node.text_type == TextType.BOLD:
         return LeafNode("b", text_node.text)
-    elif text_node.text_type == parse.NodeType.ITALIC:
+    elif text_node.text_type == TextType.ITALIC:
         return LeafNode("i", text_node.text)
-    elif text_node.text_type == parse.NodeType.CODE:
+    elif text_node.text_type == TextType.CODE:
         return LeafNode("code", text_node.text)
-    elif text_node.text_type == parse.NodeType.LINK:
+    elif text_node.text_type == TextType.LINK:
         return LeafNode("a", text_node.text, {"href": text_node.url})
-    elif text_node.text_type == parse.NodeType.IMAGE:
+    elif text_node.text_type == TextType.IMAGE:
         return LeafNode("img", None, {"src": text_node.url, "alt": text_node.text})
     else:
         raise ValueError("Unknown node type")
 
 
-def quote_to_html(block):
+def quote_to_html(block: str) -> ParentNode:
     text = " ".join([line.lstrip("> ") for line in block.split("\n")])
-    text_nodes = parse.text_to_textnodes(text)
+    text_nodes = text_to_textnodes(text)
     children = [text_node_to_html_node(node) for node in text_nodes]
     return ParentNode("blockquote", children)
 
 
-def unordered_to_html(block):
+def unordered_to_html(block: str) -> ParentNode:
     items = [line[2:] for line in block.split("\n")]
     children = []
     for item in items:
-        text_nodes = parse.text_to_textnodes(item)
+        text_nodes = text_to_textnodes(item)
         html_nodes = [text_node_to_html_node(node) for node in text_nodes]
         children.append(ParentNode("li", html_nodes))
     return ParentNode("ul", children)
 
 
-def ordered_to_html(block):
+def ordered_to_html(block: str) -> ParentNode:
     items = [line[3:] for line in block.split("\n")]
     children = []
     for item in items:
-        text_nodes = parse.text_to_textnodes(item)
+        text_nodes = text_to_textnodes(item)
         html_nodes = [text_node_to_html_node(node) for node in text_nodes]
         children.append(ParentNode("li", html_nodes))
     return ParentNode("ol", children)
 
 
-def code_to_html(block):
+def code_to_html(block: str) -> ParentNode:
     code = LeafNode(None, block.strip("```"))
     return ParentNode("pre", [ParentNode("code", [code])])
 
 
-def heading_to_html(block):
+def heading_to_html(block: str) -> ParentNode:
     parts = block.split(" ", 1)
     level = len(parts[0])
     text = parts[1]
-    text_nodes = parse.text_to_textnodes(text)
+    text_nodes = text_to_textnodes(text)
     children = [text_node_to_html_node(node) for node in text_nodes]
     return ParentNode(f"h{level}", children)
 
 
-def paragraph_to_html(block):
-    paragraph_nodes = parse.text_to_textnodes(block)
+def paragraph_to_html(block: str) -> ParentNode:
+    paragraph_nodes = text_to_textnodes(block)
+
+    if len(paragraph_nodes) == 1:
+        if paragraph_nodes[0].text_type == TextType.TEXT:
+            return LeafNode("p", paragraph_nodes[0].text)
+        return text_node_to_html_node(paragraph_nodes[0])
+
     return ParentNode("p", [text_node_to_html_node(node) for node in paragraph_nodes])
 
 
-# TODO:
 def markdown_to_html_node(markdown: str) -> ParentNode:
     nodes = []
-    blocks = parse.markdown_to_blocks(markdown)
+    blocks = markdown_to_blocks(markdown)
     for block in blocks:
-        block_type = parse.block_to_block_type(block)
-        if block_type == parse.Block.QUOTE:
+        block_type = block_to_block_type(block)
+        if block_type == BlockType.QUOTE:
             nodes.append(quote_to_html(block))
-        if block_type == parse.Block.UNORDERED:
+        if block_type == BlockType.UNORDERED:
             nodes.append(unordered_to_html(block))
-        if block_type == parse.Block.ORDERED:
+        if block_type == BlockType.ORDERED:
             nodes.append(ordered_to_html(block))
-        if block_type == parse.Block.CODE:
+        if block_type == BlockType.CODE:
             nodes.append(code_to_html(block))
-        if block_type == parse.Block.HEADING:
+        if block_type == BlockType.HEADING:
             nodes.append(heading_to_html(block))
-        if block_type == parse.Block.PARAGRAPH:
+        if block_type == BlockType.PARAGRAPH:
             nodes.append(paragraph_to_html(block))
     return ParentNode("div", nodes)
 
 
-def extract_title(markdown):
+def extract_title(markdown: str) -> str:
     heading = re.search("^# (.+)", markdown)
     if not heading:
         raise Exception("All pages require h1 header")
     return heading.group(0).strip("# ")
 
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path: str, template_path: str, dest_path: str) -> None:
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
 
     with open(from_path) as markdown_file:
@@ -184,7 +190,9 @@ def generate_page(from_path, template_path, dest_path):
         output.write(html_file)
 
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
+def generate_pages_recursive(
+    dir_path_content: str, template_path: str, dest_dir_path: str
+) -> None:
     for item in os.listdir(dir_path_content):
         src_path = os.path.join(dir_path_content, item)
         if os.path.isfile(src_path):

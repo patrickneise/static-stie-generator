@@ -1,6 +1,7 @@
 import os
 import shutil
 
+from config import CONTENT_DIR, PUBLIC_DIR, STATIC_DIR, TEMPLATE_FILE
 from generate import generate_pages_recursive
 
 
@@ -18,12 +19,6 @@ def copy_files(src_dir, dst_dir):
 
 
 def main():
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-    CONTENT_DIR = os.path.join(BASE_DIR, "content")
-    PUBLIC_DIR = os.path.join(BASE_DIR, "public")
-    STATIC_DIR = os.path.join(BASE_DIR, "static")
-    TEMPLATE_FILE = os.path.join(BASE_DIR, "template.html")
-
     try:
         shutil.rmtree(PUBLIC_DIR)
     except FileNotFoundError:
